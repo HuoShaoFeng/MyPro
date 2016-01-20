@@ -1,0 +1,546 @@
+#include <iostream>
+
+using namespace std;
+
+
+/***********typedef************/
+typedef void LinkStack;
+typedef void LinkStackNode;
+
+typedef void LinkList;
+
+typedef struct _tag_LinkListNode
+{
+    struct _tag_LinkListNode* next;
+}LinkListNode;
+
+typedef struct _tag_LinkList
+{
+    LinkListNode header;
+    int length;
+}TLinkList;
+
+typedef struct Teacher
+{
+    LinkListNode node;
+    void *item;
+};
+typedef struct _tag_LinkStackNode
+{
+    LinkListNode node;
+    void *item;
+}TLinkStackNode;
+
+/***********typedef************/
+
+/***********LinkListFunc************/
+// 创建链表
+LinkList * LinkList_Create()
+{
+    TLinkList *ret=NULL;
+    ret=(TLinkList *)malloc(sizeof(TLinkList));
+
+    memset(ret,0,sizeof(TLinkList));
+    ret->length=0;
+    ret->header.next=NULL;
+    return ret;
+}
+
+//销毁链表
+void LinkList_Destroy(LinkList *list)
+{
+    if(list!=NULL)
+    {
+        free(list);
+        list=NULL;//避免野指针
+    }
+    return;
+}
+
+//让链表恢复到初始化状态
+void LinkList_Clear(LinkList *list)
+{
+    TLinkList *tlist=NULL;
+    if(list==NULL)
+    {
+        return;
+    }
+    tlist=(TLinkList *)list;
+    tlist->length=0;
+    tlist->header.next=NULL;
+
+    return;
+}
+
+int LinkList_Length(LinkList *list)
+{
+    TLinkList *tlist=NULL;
+    if(list==NULL)
+    {
+        return -1;
+    }
+    tlist=(TLinkList *)list;
+    return tlist->length;
+}
+
+
+int LinkList_Insert(LinkList *list,LinkListNode *node,int pos)
+{
+    int ret=0;
+    if(list==NULL || node==NULL || pos<0)
+    {
+        ret=-1;
+        printf("func LinkList_Insert() error: %d\n",ret);
+        return ret;
+    }
+    TLinkList *tlist=NULL;
+    LinkListNode *current=NULL;
+    tlist=(TLinkList *)list;
+    current=&(tlist->header);//辅助指针指向链表的头结点
+
+    for(int i=0;i<pos  &&  (current->next!=NULL)    ;++i)
+    {
+        current=current->next;
+    }
+
+    node->next=current->next;//node连接后序链表
+    current->next=node;//当前节点指向插入的节点
+    tlist->length++;//插入节点后长度加1
+    return 0;
+}
+
+LinkListNode *LinkList_Get(LinkList *list,int pos)
+{
+    int ret=0;
+    if(list==NULL || pos<0)
+    {
+        ret=-1;
+        printf("func LinkList_Get() error: %d\n",ret);
+        return NULL;
+    }
+    TLinkList *tlist=NULL;
+    LinkListNode *current=NULL;
+    tlist=(TLinkList *)list;
+    current=&(tlist->header);//辅助指针指向链表的头结点
+
+    for(int i=0;i<pos  &&  (current->next!=NULL)    ;++i)
+    {
+        current=current->next;
+    }
+
+    return current->next;
+}
+
+LinkListNode *LinkList_Delete(LinkList *list,int pos)
+{
+    int ret=0;
+    if(list==NULL || pos<0)
+    {
+        ret=-1;
+        printf("func LinkList_Delete() error: %d\n",ret);
+        return NULL;
+    }
+    TLinkList *tlist=NULL;
+    LinkListNode *current=NULL;
+    LinkListNode *tmp=NULL;//定义缓存变量，存储被删除的节点，并返回，交由上层应用处理（析构）
+    tlist=(TLinkList *)list;
+    current=&(tlist->header);//辅助指针指向链表的头结点
+
+    for(int i=0;i<pos  &&  (current->next!=NULL)   ;++i)
+    {
+        current=current->next;
+    }
+    tmp=current->next;
+    current->next=tmp->next;//删除一个结点
+
+    tlist->length--;//删除一个结点后，将长度减1
+    return tmp;//将删除的节点返回，交由上层调用者进行处理（析构）
+}
+
+/***********LinkListFunc************/
+
+
+//创建栈 相当于 创建一个链表
+LinkStack *LinkStack_Create()
+{
+    return LinkList_Create();
+}
+
+void * LinkStack_Pop(LinkStack *stack);// 事先声明函数
+//清空一个栈 相当于 清空一个链表
+//清空栈的时候 涉及到 栈元素生命周期的管理
+//入栈的元素统统都是malloc出来的内存
+//如果要清空栈，把栈中的元素弹出，并且释放结点内存
+void LinkStack_Clear(LinkStack *stack)
+{
+    if(stack==NULL)
+    {
+        return;
+    }
+    while(LinkList_Length(stack)>0)
+    {
+        LinkStack_Pop(stack);//在这个函数中 释放结点的内存
+    }
+    return;
+}
+
+//销毁一个栈 相当于 销毁一个链表
+void LinkStack_Destroy(LinkStack *stack)
+{
+    LinkStack_Clear(stack);
+    LinkList_Destroy(stack);
+}
+
+//void *item栈的业务结点--->转化成 链表的业务结点
+int LinkStack_Push(LinkStack *stack,void *item)
+{
+    TLinkStackNode *tmp=NULL;
+    int ret=0;
+    tmp=(TLinkStackNode *)malloc(sizeof(TLinkStackNode));
+    if(tmp==NULL)
+    {
+        return -1;
+    }
+    memset(tmp,0,sizeof(TLinkStackNode));
+
+    //给业务结点赋值
+    tmp->item=item;
+
+    ret=LinkList_Insert(stack,(LinkListNode *)tmp,0);
+    if(ret!=0)
+    {
+        printf("func LinkList_Insert() error:%d\n",ret);
+        //失败的时候防止内存泄露
+        if(tmp!=NULL)
+        {
+            free(tmp);//释放内存
+        }
+        return ret;
+    }
+    return 0;
+}
+
+//从栈中弹出元素，相当于 从线性表的头部删除元素
+//把线性表的业务结点 转化成 栈的业务结点
+void * LinkStack_Pop(LinkStack *stack)
+{
+    void *item=NULL;//栈的业务结点
+    TLinkStackNode *tmp=NULL;
+    tmp=(TLinkStackNode *)LinkList_Delete(stack,0);
+    if(tmp==NULL)
+    {
+        return NULL;
+    }
+    item=tmp->item;
+    //因为LinkList_Insert()的时候分配了内存，所以 LinkList_Delete 释放内存
+    free(tmp);
+    return item;
+}
+
+//获取栈顶元素 相当于获取链表的0号位置
+void *LinkStack_Top(LinkStack *stack)
+{
+    TLinkStackNode *tmp=NULL;
+    tmp=(TLinkStackNode *)LinkList_Get(stack,0);
+    if(tmp==NULL)
+    {
+        return NULL;
+    }
+    return tmp->item;
+}
+
+//求栈的大小 相当于 求链表的len
+int LinkStack_Size(LinkStack *stack)
+{
+    return LinkList_Length(stack);
+}
+
+/**********栈的应用——左右符号匹配***********/
+int IsLeft(char c)
+{
+    int ret=0;
+    switch(c)
+    {
+        case '<':
+        case '(':
+        case '{':
+        case '[':
+        case '\'':
+        case '\"':
+            ret=1;
+            break;
+        default:
+        ret=0;
+        break;
+    }
+    return ret;
+}
+
+int IsRight(char c)
+{
+    int ret=0;
+    switch(c)
+    {
+        case '>':
+        case ')':
+        case '}':
+        case ']':
+        case '\'':
+        case '\"':
+            ret=1;
+            break;
+        default:
+        ret=0;
+        break;
+    }
+    return ret;
+}
+
+int match(char left,char right)
+{
+    int ret=0;
+    switch(left)
+    {
+        case '<':
+            ret=(right=='>');
+            break;
+        case '(':
+            ret=(right==')');
+            break;
+        case '[':
+            ret=(right==']');
+            break;
+        case '{':
+            ret=(right=='}');
+            break;
+        case '\'':
+            ret=(right=='\'');
+            break;
+        case '\"':
+            ret=(right=='\"');
+            break;
+        default:
+            ret=0;
+            break;
+    }
+    return ret;
+}
+
+int Scanner(const char *code)
+{
+    LinkStack *stack=LinkStack_Create();
+    int ret=0;
+    int i=0;
+
+    while(code[i]!='\0')
+    {
+        if(IsLeft(code[i]))
+        {
+            LinkStack_Push(stack,(void *)(code+i));
+        }
+
+        if(IsRight(code[i]))
+        {
+            char *c=(char *)LinkStack_Pop(stack);
+
+            if(    (c==NULL) || (!match(*c,code[i])  ))
+            {
+                printf("%c does not match!\n",code[i]);
+                ret=0;
+                break;
+            }
+        }
+        i++;
+    }
+    if( (LinkStack_Size(stack)==0) && (code[i]=='\0') )
+    {
+        printf("successed!\n");
+    }
+    else
+    {
+        printf("failed!\n");
+    }
+    return ret;
+}
+/**********栈的应用——左右符号匹配***********/
+
+/**********栈的应用——中缀表达式转化为后缀表达式***********/
+int IsNumber(char c)
+{
+    return ('0'<=c)&&(c<='9');
+}
+
+int IsOperator(char c)
+{
+    return (c=='+')||(c=='-')||(c=='*')||(c=='/');
+}
+
+int IsLeftBracket(char c)
+{
+    return (c=='(');
+}
+
+int IsRightBracket(char c)
+{
+    return (c==')');
+}
+
+int Priority(char c)
+{
+    int ret=0;
+    if((c=='+') || (c=='-'))
+    {
+        ret=1;
+    }
+    if((c=='*')|| (c=='/') )
+    {
+        ret=2;
+    }
+    return ret;
+}
+
+void Output(const char c)
+{
+    if(c!='\0')
+    {
+            cout<<"output:"<<c<<endl;
+    }
+}
+
+void Transform(const char *exp)
+{
+    int i=0;
+    LinkStack *linkstack=LinkStack_Create();
+
+    while(exp[i]!='\0')
+    {
+        if(IsNumber(exp[i]))
+        {
+            Output(exp[i]);
+        }
+        else if(IsOperator(exp[i]))
+        {
+            while(Priority(exp[i])<=Priority((char)(int)LinkStack_Top(linkstack)))
+            {
+                Output((char)(int)LinkStack_Pop(linkstack));
+            }
+            LinkStack_Push(linkstack,(void*)(int)exp[i]);
+        }
+        else if(IsLeftBracket(exp[i]))
+        {
+            LinkStack_Push(linkstack,(void*)(int)exp[i]);
+        }
+        else if(IsRightBracket(exp[i]))
+        {
+            //char c='\0'
+            while(  !IsLeftBracket((char)(int)LinkStack_Top(linkstack)    ))
+            {
+                Output((char)(int)LinkStack_Pop(linkstack));
+            }
+            LinkStack_Pop(linkstack);
+        }
+        else
+        {
+            cout<<"Invalid expression!"<<endl;
+            break;
+        }
+        i++;
+    }  //while   end
+}
+
+/**********栈的应用——中缀表达式转化为后缀表达式***********/
+
+
+/********************栈的典型应用——后缀表达式的计算*********************/
+int IsNumber3(char c)
+{
+    return (('0'<=c)&&(c<='9'));
+}
+
+int IsOperator3(char c)
+{
+    return (c=='+')||(c=='-')||(c=='*')||(c=='/');
+}
+
+int Value(char c)
+{
+    return (c-'0');
+}
+
+int Express(int left,int right,char op)
+{
+    int ret=0;
+    switch(op)
+    {
+        case '+':
+            ret=left+right;
+            break;
+        case '-':
+            ret=left-right;
+            break;
+        case '*':
+            ret=left*right;
+            break;
+        case '/':
+            ret=left/right;
+            break;
+        default:
+            break;
+    }
+    return ret;
+}
+
+
+int Compute(const char *exp)
+{
+    LinkStack *stack=LinkStack_Create();
+
+    int ret=0,i=0;
+
+    while(exp[i]!='\0')
+    {
+        if(IsNumber3(exp[i]))
+        {
+            LinkStack_Push(stack,(void *)Value(exp[i]));
+        }
+        else if(IsOperator3(exp[i]))
+        {
+            int right=(int)LinkStack_Pop(stack);
+            int left=(int)LinkStack_Pop(stack);
+            int result=Express(left,right,exp[i]);
+            LinkStack_Push(stack,(void *)result);
+        }
+        else
+        {
+            cout<<"Invalid Expression!";
+            break;
+        }
+        i++;
+    }
+    if((LinkStack_Size(stack)==1) &&(exp[i]=='0') )
+    {
+        ret=(int)LinkStack_Pop(stack);
+    }
+    else
+    {
+        cout<<"Invalid Expression!";
+    }
+    LinkStack_Destroy(stack);
+    return ret;
+}
+/********************栈的典型应用——后缀表达式的计算*********************/
+
+int main()
+{
+    char *str="#include<iostream int main(){ char ca[10]; int i(10)}";
+    Scanner(str);
+
+   Transform("8+(3-1)*5");// 中缀表达式转化为后缀表达式
+
+    printf("8+(3-1)*5=%d\n",Compute("831-5*+"));//计算后缀表达式
+
+    cout<<endl;
+    system("pause");
+    return 0;
+}
+
