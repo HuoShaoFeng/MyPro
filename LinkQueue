@@ -1,0 +1,261 @@
+
+#include <iostream>
+
+using namespace std;
+
+
+
+typedef void LinkQueue;
+
+/****************线性表的链式存储***************/
+
+typedef void LinkList;
+
+typedef struct _tag_LinkListNode
+{
+    struct _tag_LinkListNode* next;
+}LinkListNode;
+
+typedef struct _tag_LinkList
+{
+    LinkListNode header;
+    int length;
+}TLinkList;
+
+// 创建链表
+LinkList * LinkList_Create()
+{
+    TLinkList *ret=NULL;
+    ret=(TLinkList *)malloc(sizeof(TLinkList));
+
+    memset(ret,0,sizeof(TLinkList));
+    ret->length=0;
+    ret->header.next=NULL;
+    return ret;
+}
+
+//销毁链表
+void LinkList_Destroy(LinkList *list)
+{
+    if(list!=NULL)
+    {
+        free(list);
+        list=NULL;//避免野指针
+    }
+    return;
+}
+
+//让链表恢复到初始化状态
+void LinkList_Clear(LinkList *list)
+{
+    TLinkList *tlist=NULL;
+    if(list==NULL)
+    {
+        return;
+    }
+    tlist=(TLinkList *)list;
+    tlist->length=0;
+    tlist->header.next=NULL;
+
+    return;
+}
+
+int LinkList_Length(LinkList *list)
+{
+    TLinkList *tlist=NULL;
+    if(list==NULL)
+    {
+        return -1;
+    }
+    tlist=(TLinkList *)list;
+    return tlist->length;
+}
+
+
+int LinkList_Insert(LinkList *list,LinkListNode *node,int pos)
+{
+    int ret=0;
+    if(list==NULL || node==NULL || pos<0)
+    {
+        ret=-1;
+        printf("func LinkList_Insert() error: %d\n",ret);
+        return ret;
+    }
+    TLinkList *tlist=NULL;
+    LinkListNode *current=NULL;
+    tlist=(TLinkList *)list;
+    current=&(tlist->header);//辅助指针指向链表的头结点
+
+    for(int i=0;i<pos  &&  (current->next!=NULL)    ;++i)
+    {
+        current=current->next;
+    }
+
+    node->next=current->next;//node连接后序链表
+    current->next=node;//当前节点指向插入的节点
+    tlist->length++;//插入节点后长度加1
+    return 0;
+}
+
+LinkListNode *LinkList_Get(LinkList *list,int pos)
+{
+    int ret=0;
+    if(list==NULL || pos<0)
+    {
+        ret=-1;
+        printf("func LinkList_Get() error: %d\n",ret);
+        return NULL;
+    }
+    TLinkList *tlist=NULL;
+    LinkListNode *current=NULL;
+    tlist=(TLinkList *)list;
+    current=&(tlist->header);//辅助指针指向链表的头结点
+
+    for(int i=0;i<pos  &&  (current->next!=NULL)    ;++i)
+    {
+        current=current->next;
+    }
+
+    return current->next;
+}
+
+LinkListNode *LinkList_Delete(LinkList *list,int pos)
+{
+    int ret=0;
+    if(list==NULL || pos<0)
+    {
+        ret=-1;
+        printf("func LinkList_Delete() error: %d\n",ret);
+        return NULL;
+    }
+    TLinkList *tlist=NULL;
+    LinkListNode *current=NULL;
+    LinkListNode *tmp=NULL;//定义缓存变量，存储被删除的节点，并返回，交由上层应用处理（析构）
+    tlist=(TLinkList *)list;
+    current=&(tlist->header);//辅助指针指向链表的头结点
+
+    for(int i=0;i<pos  &&  (current->next!=NULL)   ;++i)
+    {
+        current=current->next;
+    }
+    tmp=current->next;
+    current->next=tmp->next;//删除一个结点
+
+    tlist->length--;//删除一个结点后，将长度减1
+    return tmp;//将删除的节点返回，交由上层调用者进行处理（析构）
+}
+
+/****************线性表的链式存储***************/
+
+
+/****************队列的链式存储***************/
+//队列也是一种特殊的线性表
+//队列的业务结点的数据结构
+typedef struct _tag_LinkQueueNode
+{
+    LinkListNode node;
+    void *item; //业务结点
+}TLinkListNode;
+
+
+//创建队列 相当于 创建链表
+LinkQueue *LinkQueue_Create()
+{
+    return LinkList_Create();
+}
+
+//求队列的长度 相当于 求线性表的长度
+int LinkQueue_Length(LinkQueue *queue)
+{
+    return LinkList_Length(queue);
+}
+
+//从队列中删除元素 相当于 从链表的头部删除元素
+void *LinkQueue_Retrieve(LinkQueue *queue)
+{
+    TLinkListNode *tmp=NULL;
+    void *ret=NULL;
+    tmp=(TLinkListNode *)LinkList_Delete(queue,0);
+    if(tmp==NULL)
+    {
+        printf("func LinkList_Delete() error\n");
+        return NULL;
+    }
+
+    ret=tmp->item;//删除之前缓存
+    if(tmp!=NULL)
+    {
+        free(tmp);
+    }
+    return ret;
+}
+
+//如果要清空队列，需要显式的把队列中的所有结点找到 并释放
+void LinkQueue_Clear(LinkQueue *queue)
+{
+    while(LinkQueue_Length(queue)>0)
+    {
+        LinkQueue_Retrieve(queue);
+    }
+    LinkList_Clear(queue);
+}
+
+//销毁队列 相当于 销毁链表
+//结点的内存管理
+void LinkQueue_Destroy(LinkQueue *queue)
+{
+    LinkQueue_Clear(queue);
+    LinkList_Destroy(queue);
+}
+
+//向队列中添加元素， 相当于 向链表的尾部添加元素
+int LinkQueue_Append(LinkQueue *queue,void *item)
+{
+    int ret=0;
+    TLinkListNode *tmp=NULL;
+    tmp=(TLinkListNode *)malloc(sizeof(TLinkListNode));
+    if(tmp==NULL)
+    {
+        ret=-1;
+        printf("func LinkQueue_Append() malloc error:%d\n",ret);
+        return ret;
+    }
+    memset(tmp,0,sizeof(TLinkListNode));//做一个负责任的人
+    tmp->item=item;
+    //需要把队列的item（队列的业务结点） 转化成 链表的LinkListNode
+    ret = LinkList_Insert(queue,(LinkListNode *)tmp,LinkList_Length(queue));
+    if(ret!=0)
+    {
+        printf("func LinkList_Insert() error:%d\n",ret);
+        if(tmp!=NULL)
+        {
+            free(tmp);
+        }
+        return ret;
+    }
+    return ret;
+}
+
+//获取队列的头部元素  相当于 从链表的0号位置拿元素
+void *LinkQueue_Header(LinkQueue *queue)
+{
+    TLinkListNode   *tmp=NULL;
+    void 			*ret=NULL;
+    tmp =(TLinkListNode *) LinkList_Get(queue,0);
+    if(tmp==NULL)
+    {
+        printf("func LinkQueue_Header() error\n");
+        return NULL;
+    }
+    return tmp->item;
+}
+
+/****************队列的链式存储***************/
+
+int main()
+{
+    cout << "Hello World!" << endl;
+    system("pause");
+    return 0;
+}
+
