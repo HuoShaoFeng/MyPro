@@ -1,0 +1,232 @@
+#include <iostream>
+using namespace std;
+
+typedef void SeqQueue;
+
+/**************线性表的顺序存储实现***************/
+typedef void SeqList;
+typedef void SeqListNode;
+typedef struct _tag_SeqList
+{
+    int length;
+    int capacity;
+    unsigned int *node;
+}TSeqList;
+
+TSeqList * SeqList_Create(int capacity)
+{
+    int ret=0;
+    TSeqList *tmp=NULL;
+    tmp=(TSeqList *)malloc(sizeof(TSeqList));
+    if(tmp==NULL)
+    {
+        ret=-1;
+        printf("func SeqList_Create() error:%d.\n",ret);
+        return NULL;
+    }
+
+    memset(tmp,0,sizeof(TSeqList));
+
+    //根据Capacity的大小分配结点的空间
+    tmp->node=(unsigned int *)malloc(sizeof(unsigned int *)*capacity);
+    if(tmp->node==NULL)
+    {
+        ret=-2;
+        printf("func malloc error:%d.\n",ret);
+        return NULL;
+    }
+
+    tmp->capacity=capacity;
+    tmp->length=0;
+
+    return tmp;
+}
+
+void SeqList_Destroy(SeqList *list)
+{
+    TSeqList *tlist=NULL;
+    if(list==NULL)
+    {
+        return ;
+    }
+    tlist=(TSeqList *)list;
+    if(tlist->node != NULL)
+    {
+        free(tlist->node);
+    }
+    free(tlist);
+}
+
+//清空链表  回到初始化状态
+void SeqList_Clear(SeqList *list)
+{
+    TSeqList *tlist=NULL;
+    if(list==NULL)
+    {
+        return ;
+    }
+    tlist=(TSeqList *)list;
+    tlist->length=0;
+    return;
+}
+
+int SeqList_Length(SeqList *list)
+{
+    TSeqList *tlist=NULL;
+    if(list==NULL)
+    {
+        return -1;
+    }
+    tlist=(TSeqList *)list;
+    return tlist->length;
+}
+
+int SeqList_Capacity(SeqList *list)
+{
+    TSeqList *tlist=NULL;
+    if(list==NULL)
+    {
+        return -1;
+    }
+    tlist=(TSeqList *)list;
+    return tlist->capacity;
+}
+
+int SeqList_Insert(SeqList *list,SeqListNode *node,int pos)
+{
+    int i=0,ret=0;
+    TSeqList *tlist=NULL;
+    if(list==NULL || node==NULL || pos<0)
+    {
+        ret=-1;
+        printf("func SeqList_Insert() err:%d \n",ret);
+        return ret;
+    }
+    tlist=(TSeqList*)list;
+
+    //判断是不是满了
+    if(tlist->length >= tlist->capacity)
+    {
+        ret=-2;
+        printf("func SeqList_Insert() (tlist->length >= tlist->capacity) err:%d \n",ret);
+        return ret;
+    }
+
+    //容错修正  6个长度 容量20；用户在pos=10位置插入
+    if(pos>=tlist->length)
+    {
+        pos=tlist->length;
+    }
+
+    //元素后移
+    for(int i=tlist->length;i>pos;--i)
+    {
+        tlist->node[i]=tlist->node[i-1];
+    }
+    //插入元素
+    tlist->node[i]=(unsigned int)node;
+    tlist->length++;//插入元素后长度加1
+    return 0;
+}
+
+SeqListNode *SeqList_Get(SeqList *list,int pos)
+{
+    int i=0;
+    SeqListNode *ret=NULL;
+    TSeqList *tlist=NULL;
+    if(list==NULL || pos<0)
+    {
+        printf("func SeqList_Get() err:%d\n",ret);
+        return NULL;
+    }
+    tlist=(TSeqList*)list;
+    ret=(SeqListNode *)tlist->node[pos];
+    return ret;
+}
+
+SeqListNode *SeqList_Delete(SeqList *list,int pos)
+{
+    int i=0;
+    SeqListNode *ret=NULL;
+    TSeqList *tlist=NULL;
+    if(list==NULL || pos<0)
+    {
+        printf("func SeqList_Delete() err:%d\n",ret);
+        return NULL;
+    }
+    tlist=(TSeqList*)list;
+
+    //缓存待删除的结点
+    ret=(TSeqList*)tlist->node[pos];
+
+    //元素前移,注意for循环的第一个条件
+    for(int i=pos+1;i<tlist->length;++i)
+    {
+        tlist->node[i-1]=tlist->node[i];
+    }
+    tlist->length--;
+
+    return ret;
+}
+/**************线性表的顺序存储实现***************/
+
+/**************队列的顺序存储***************/
+//队列是一种特殊的线性表
+
+//创建一个队列 相当于 创建一个顺序存储的线性表
+SeqQueue *SeqQueue_Create(int capacity)
+{
+    return SeqList_Create(capacity);
+}
+
+//销毁一个队列 相当于 销毁一个线性表
+void SeqQueue_Destroy(SeqQueue *queue)
+{
+    return SeqList_Destroy(queue);
+}
+
+//清空队列 相当于 清空线性表
+void SeqQueue_Clear(SeqQueue *queue)
+{
+    SeqList_Clear(queue);
+}
+
+//向队列中 添加一个元素 相当于 向线性表中添加一个元素
+int SeqQueue_Append(SeqQueue *queue,void *item)
+{
+    //使用尾部插入
+    return SeqList_Insert(queue,item,SeqList_Length(queue));
+}
+
+//提取队列中的元素，出队列，相当于从线性表中删除0号元素
+void *SeqQueue_Retrieve(SeqQueue *queue)
+{
+    return SeqList_Delete(queue,0);
+}
+
+//获取队列的头部元素 相当于 获取线性表的头部元素
+void *SeqQueue_Header(SeqQueue *queue)
+{
+    return SeqList_Get(queue,0);
+}
+
+//获取队列的长度，相当于 求线性表的长度
+int SeqQueue_Length(SeqQueue *queue)
+{
+    return SeqList_Length(queue);
+}
+
+//获取队列的容量，相当于 获取线性表的容量
+int SeqQueue_Capacity(SeqQueue *queue)
+{
+    return SeqList_Capacity(queue);
+}
+
+/**************队列的顺序存储***************/
+
+
+int main()
+{
+    cout << "Hello World!" << endl;
+    return 0;
+}
